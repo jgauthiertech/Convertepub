@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QStatusBar,
     QToolBar,
@@ -22,10 +23,12 @@ from PySide6.QtWidgets import (
 
 from src import config
 from src.core.converter import ConversionResult, ConversionStep
+from src.gui.dialogs.about_dialog import AboutDialog
 from src.gui.dialogs.settings_dialog import (
     SettingsDialog,
     get_output_dir,
 )
+from src.gui.donate import DonationBanner, ThanksDialog
 from src.gui.widgets.conversion_list import ConversionListWidget
 from src.gui.widgets.drop_zone import DropZone
 from src.workers.conversion_worker import ConversionWorker
@@ -65,12 +68,17 @@ class MainWindow(QMainWindow):
         bottom_layout.addWidget(open_btn)
         bottom_layout.addStretch()
 
+        # === Bandeau de don (toujours visible) ===
+        self._donation_banner = DonationBanner()
+
         # === Layout principal ===
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(8, 8, 8, 0)
+        layout.setSpacing(0)
         layout.addWidget(splitter, 1)
         layout.addWidget(bottom)
+        layout.addWidget(self._donation_banner)
         self.setCentralWidget(central)
 
         self._build_toolbar()
@@ -88,6 +96,15 @@ class MainWindow(QMainWindow):
         settings_action.triggered.connect(self._open_settings)
         bar.addAction(settings_action)
 
+        # Pousse le bouton "À propos" tout à droite
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        bar.addWidget(spacer)
+
+        about_action = QAction("À propos", self)
+        about_action.triggered.connect(self._open_about)
+        bar.addAction(about_action)
+
     def _refresh_status(self) -> None:
         self.statusBar().showMessage(f"Sortie : {get_output_dir()}")
 
@@ -95,6 +112,9 @@ class MainWindow(QMainWindow):
         dlg = SettingsDialog(self)
         if dlg.exec():
             self._refresh_status()
+
+    def _open_about(self) -> None:
+        AboutDialog(self).exec()
 
     def _open_output_dir(self) -> None:
         import os
@@ -119,6 +139,7 @@ class MainWindow(QMainWindow):
     def _on_finished(self, name: str, result: ConversionResult) -> None:
         self._list.mark_done(name, result.output_path)
         log.info("Conversion terminée : %s -> %s", name, result.output_path)
+        ThanksDialog(self, book_title=result.metadata.title).exec()
 
     def _on_failed(self, name: str, kind: str, message: str) -> None:
         self._list.mark_failed(name, kind, message)
