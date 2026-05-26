@@ -1,73 +1,94 @@
 # Convertepub
 
-Application Windows pour convertir un fichier `.acsm` (Adobe Content Server Message) en EPUB sans DRM. Pensée pour les livres achetés chez **Fnac**, **Furet du Nord**, **Cultura**, **Decitre** et autres revendeurs français passant par le backend **TEA Ebook**.
+Windows application that converts an `.acsm` file (Adobe Content Server Message) into a DRM-free EPUB. Designed for books purchased from **Fnac**, **Furet du Nord**, **Cultura**, **Decitre** and other French retailers using the **TEA Ebook** backend.
 
-Cas d'usage : tu achètes un livre en EPUB, ton revendeur t'envoie un `.acsm`, et ta liseuse (Kindle par exemple) n'est pas compatible avec le DRM Adobe ADEPT. Convertepub fait le pont — l'EPUB de sortie est lisible partout et envoyable à ta Kindle via Send-to-Kindle.
+Use case: you buy an EPUB, your retailer hands you a `.acsm`, and your e-reader (e.g. a Kindle) doesn't support Adobe ADEPT DRM. Convertepub bridges the gap — the output EPUB can be read anywhere, including a Kindle via Send-to-Kindle.
 
-## Auteur
+## Author
 
 **Julien Gauthier** — <iam@juliengauthier.org> — <https://juliengauthier.org>
 
-## Fonctionnalités
+## Features
 
-- Glisser-déposer un ou plusieurs `.acsm` dans la fenêtre
-- Activation Adobe **anonyme** automatique (aucun compte à créer)
-- Rotation automatique de l'activation si le device est saturé
-- Mode CLI pour scripting (`--cli fichier.acsm --output out/`)
-- Sortie EPUB standard, lisible dans Calibre, Sigil, Kobo, Kindle (via Send-to-Kindle)…
+- Drag-and-drop one or more `.acsm` files into the window
+- **Anonymous** Adobe activation, fully automatic (no account required)
+- Transparent activation rotation if the device gets saturated
+- **Bilingual UI** — French / English, auto-detected from system locale, switchable from the Settings dialog
+- Standard menu bar (File / Help) with keyboard shortcuts
+- Permanent donation banner + post-conversion thank-you popup
+- CLI mode for scripting (`--cli file.acsm --output out/`)
+- Output is a standard EPUB readable in Calibre, Sigil, Kobo, Kindle (via Send-to-Kindle)…
 
-## Utilisation
+## Usage
 
-### Mode graphique
+### GUI mode
 ```
 python -m src.main
 ```
 
-### Mode ligne de commande
+### CLI mode
 ```
-python -m src.main --cli mon_livre.acsm --output ./out
+python -m src.main --cli my_book.acsm --output ./out
 ```
 
-### Première activation Adobe (optionnel, pour tester la connexion)
+### First Adobe activation (optional — test connectivity without consuming a token)
 ```
 python -m src.main --setup-only
 ```
 
+### Packaged executable
+Download `Convertepub.exe` from the [Releases page](https://github.com/jgauthiertech/Convertepub/releases) — no Python or installation needed. On first launch, Windows SmartScreen will block the unsigned binary: click **More info → Run anyway**.
+
 ## Pipeline
 
 ```
-livre.acsm  →  [fulfillment Adobe ADEPT]  →  livre.epub (DRM)  →  [retrait DRM]  →  livre.epub propre
+book.acsm  →  [Adobe ADEPT fulfillment]  →  book.epub (DRM)  →  [DRM removal]  →  clean book.epub
 ```
 
-## Pile technique
+## Tech stack
 
-- **Python 3.11+** — pas de binaire externe, 100 % Python
-- **PySide6** pour la GUI
-- **acsm-calibre-plugin** (extrait) pour le fulfillment ACSM
-- **DeDRM_tools / ineptepub** (extrait) pour le retrait DRM ADEPT
+- **Python 3.11+** — no external binary, 100% Python
+- **PySide6** for the GUI
+- **acsm-calibre-plugin** (extracted modules) for ACSM fulfillment
+- **DeDRM_tools / ineptepub** (extracted module) for ADEPT DRM removal
+- **PyInstaller** for packaging into a standalone Windows `.exe`
 
-## Stockage local
+## Local storage
 
-- `%LOCALAPPDATA%\Convertepub\activations\` — clés d'activation Adobe (une par slot, rotation transparente)
-- `%LOCALAPPDATA%\Convertepub\logs\` — logs applicatifs
-- `%LOCALAPPDATA%\Convertepub\settings.json` — préférences (dossier de sortie…)
+- `%LOCALAPPDATA%\Convertepub\activations\` — Adobe activation keys (one folder per slot, transparent rotation)
+- `%LOCALAPPDATA%\Convertepub\logs\` — application logs
+- `%LOCALAPPDATA%\Convertepub\settings.json` — user preferences (output folder, language…)
 
-## Légalité
+## Build the executable
 
-Cette application est destinée à l'**interopérabilité d'œuvres acquises légalement** avec un matériel non compatible Adobe DRM — un cas d'usage explicitement couvert par l'article L331-5 du Code de la propriété intellectuelle français. Elle ne contourne pas la mesure technique pour un usage frauduleux : tu dois posséder une licence légitime du livre.
+```
+.venv\Scripts\python.exe -m PyInstaller build.spec --noconfirm
+```
 
-## Crédits
+Output: `dist/Convertepub.exe` (~54 MB, standalone, no Python required on the target machine).
 
-Le cœur ADEPT de cette application est tiré de deux projets sans lesquels rien de tout cela ne serait possible :
+## Legality
 
-- **[acsm-calibre-plugin](https://github.com/Leseratte10/acsm-calibre-plugin)** de Leseratte10 — réimplémentation Python du protocole de fulfillment Adobe
-- **[DeDRM_tools / noDRM](https://github.com/noDRM/DeDRM_tools)** d'Apprentice Alf, Apprentice Harper et i♥cabbages — module `ineptepub` pour le retrait du DRM ADEPT
-- **[libgourou](https://forge.soutade.fr/soutade/libgourou)** de Grégory Soutadé — recherche d'origine sur le protocole ADEPT
+This application is intended for **interoperability of legally acquired works** with hardware that doesn't support Adobe DRM — a use case explicitly covered by Article L331-5 of the French Intellectual Property Code. It does not circumvent the technical protection measure for fraudulent use: you must own a legitimate license for the book.
 
-Merci à eux.
+## Credits
 
-## Licence
+The ADEPT core of this application is taken from two projects without which none of this would be possible:
 
-GPL-3.0-or-later. Voir [`LICENSE`](LICENSE).
+- **[acsm-calibre-plugin](https://github.com/Leseratte10/acsm-calibre-plugin)** by Leseratte10 — Python reimplementation of the Adobe fulfillment protocol
+- **[DeDRM_tools / noDRM](https://github.com/noDRM/DeDRM_tools)** by Apprentice Alf, Apprentice Harper and i♥cabbages — `ineptepub` module for ADEPT DRM removal
+- **[libgourou](https://forge.soutade.fr/soutade/libgourou)** by Grégory Soutadé — original research on the ADEPT protocol
 
-Cette application incorpore du code GPL-3.0 des projets cités ci-dessus, donc l'application entière est sous la même licence. Toute redistribution doit publier les sources.
+Many thanks to them.
+
+## Support the project
+
+If Convertepub helps you, you can support its development:
+
+→ [revolut.me/datadump](https://revolut.me/datadump)
+
+## License
+
+GPL-3.0-or-later. See [`LICENSE`](LICENSE).
+
+This application incorporates GPL-3.0 code from the projects cited above, so the entire application falls under the same license. Any redistribution must publish the sources.
