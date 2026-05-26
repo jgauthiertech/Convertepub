@@ -14,14 +14,32 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.converter import ConversionStep
+from src.i18n import t
 
-_STEP_LABELS = {
-    ConversionStep.PARSING: ("Lecture ACSM", 10),
-    ConversionStep.ACTIVATING: ("Activation Adobe", 25),
-    ConversionStep.FULFILLING: ("Demande au serveur", 40),
-    ConversionStep.DOWNLOADING: ("Téléchargement", 70),
-    ConversionStep.DECRYPTING: ("Retrait du DRM", 90),
-    ConversionStep.DONE: ("Terminé", 100),
+
+_STEP_PROGRESS = {
+    ConversionStep.PARSING: 10,
+    ConversionStep.ACTIVATING: 25,
+    ConversionStep.FULFILLING: 40,
+    ConversionStep.DOWNLOADING: 70,
+    ConversionStep.DECRYPTING: 90,
+    ConversionStep.DONE: 100,
+}
+
+_STEP_KEY = {
+    ConversionStep.PARSING: "step.parsing",
+    ConversionStep.ACTIVATING: "step.activating",
+    ConversionStep.FULFILLING: "step.fulfilling",
+    ConversionStep.DOWNLOADING: "step.downloading",
+    ConversionStep.DECRYPTING: "step.decrypting",
+    ConversionStep.DONE: "step.done",
+}
+
+_ERROR_KEY = {
+    "token_expired": "list.error_token_expired",
+    "token_consumed": "list.error_token_consumed",
+    "conversion_error": "list.error_conversion",
+    "unexpected": "list.error_unexpected",
 }
 
 
@@ -34,7 +52,11 @@ class ConversionListWidget(QTableWidget):
 
     def __init__(self, parent=None):
         super().__init__(0, 3, parent)
-        self.setHorizontalHeaderLabels(["Fichier", "Statut", "Progression"])
+        self.setHorizontalHeaderLabels([
+            t("list.col_file"),
+            t("list.col_status"),
+            t("list.col_progress"),
+        ])
         self.verticalHeader().setVisible(False)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -51,7 +73,7 @@ class ConversionListWidget(QTableWidget):
         name = acsm_path.name
         if name in self._row_by_name:
             row = self._row_by_name[name]
-            self._set_status(row, "En attente", 0)
+            self._set_status(row, t("list.status_pending"), 0)
             return
 
         row = self.rowCount()
@@ -61,7 +83,7 @@ class ConversionListWidget(QTableWidget):
         file_item = QTableWidgetItem(name)
         file_item.setToolTip(str(acsm_path))
         self.setItem(row, self.COL_FILE, file_item)
-        self.setItem(row, self.COL_STATUS, QTableWidgetItem("En attente"))
+        self.setItem(row, self.COL_STATUS, QTableWidgetItem(t("list.status_pending")))
 
         bar = QProgressBar()
         bar.setRange(0, 100)
@@ -72,7 +94,8 @@ class ConversionListWidget(QTableWidget):
         row = self._row_by_name.get(name)
         if row is None:
             return
-        label, percent = _STEP_LABELS.get(step, (step.value, 0))
+        label = t(_STEP_KEY.get(step, "step.done"))
+        percent = _STEP_PROGRESS.get(step, 0)
         if detail and step != ConversionStep.DONE:
             label = f"{label} — {detail}"
         self._set_status(row, label, percent)
@@ -83,7 +106,7 @@ class ConversionListWidget(QTableWidget):
             return
         item = self.item(row, self.COL_STATUS)
         if item is not None:
-            item.setText(f"OK — {output_path.name}")
+            item.setText(t("list.status_done", filename=output_path.name))
             item.setToolTip(str(output_path))
         bar = self.cellWidget(row, self.COL_PROGRESS)
         if isinstance(bar, QProgressBar):
@@ -93,15 +116,9 @@ class ConversionListWidget(QTableWidget):
         row = self._row_by_name.get(name)
         if row is None:
             return
-        kind_labels = {
-            "token_expired": "Token expiré",
-            "token_consumed": "Token déjà utilisé",
-            "conversion_error": "Erreur",
-            "unexpected": "Erreur inattendue",
-        }
         item = self.item(row, self.COL_STATUS)
         if item is not None:
-            item.setText(kind_labels.get(kind, "Erreur"))
+            item.setText(t(_ERROR_KEY.get(kind, "list.error_conversion")))
             item.setToolTip(message)
             item.setForeground(Qt.GlobalColor.darkRed)
         bar = self.cellWidget(row, self.COL_PROGRESS)

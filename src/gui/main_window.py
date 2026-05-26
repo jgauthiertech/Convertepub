@@ -6,17 +6,17 @@ import logging
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThreadPool
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import Qt, QTimer, QThreadPool, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QHBoxLayout,
     QMainWindow,
+    QMessageBox,
     QPushButton,
-    QSizePolicy,
     QSplitter,
     QStatusBar,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -28,9 +28,15 @@ from src.gui.dialogs.settings_dialog import (
     SettingsDialog,
     get_output_dir,
 )
-from src.gui.donate import DonationBanner, ThanksDialog
+from src.gui.donate import (
+    DONATION_URL,
+    DonationBanner,
+    StartupDonationDialog,
+    ThanksDialog,
+)
 from src.gui.widgets.conversion_list import ConversionListWidget
 from src.gui.widgets.drop_zone import DropZone
+from src.i18n import t
 from src.workers.conversion_worker import ConversionWorker
 
 log = logging.getLogger(__name__)
@@ -39,7 +45,7 @@ log = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Convertepub")
+        self.setWindowTitle(t("app.title"))
         self.resize(900, 600)
 
         self._thread_pool = QThreadPool.globalInstance()
@@ -63,7 +69,7 @@ class MainWindow(QMainWindow):
         bottom = QWidget()
         bottom_layout = QHBoxLayout(bottom)
         bottom_layout.setContentsMargins(8, 8, 8, 8)
-        open_btn = QPushButton("Ouvrir le dossier de sortie")
+        open_btn = QPushButton(t("action.open_output_dir"))
         open_btn.clicked.connect(self._open_output_dir)
         bottom_layout.addWidget(open_btn)
         bottom_layout.addStretch()
@@ -81,40 +87,80 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._donation_banner)
         self.setCentralWidget(central)
 
-        self._build_toolbar()
+        self._build_menubar()
 
         self.setStatusBar(QStatusBar())
         self._refresh_status()
 
-    def _build_toolbar(self) -> None:
-        bar = QToolBar()
-        bar.setMovable(False)
-        bar.setStyleSheet("QToolBar { border: 0; padding: 4px; }")
-        self.addToolBar(bar)
+        # Popup de soutien au démarrage : on l'affiche après que la fenêtre
+        # principale soit visible (sinon elle s'ouvre avant et c'est moche).
+        QTimer.singleShot(300, self._show_startup_donation)
 
-        settings_action = QAction("Paramètres", self)
+    # ----- Menu bar -----
+
+    def _build_menubar(self) -> None:
+        menubar = self.menuBar()
+
+        # File
+        file_menu = menubar.addMenu(t("menu.file"))
+
+        open_action = QAction(t("menu.file.open"), self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
+        open_action.triggered.connect(self._pick_files)
+        file_menu.addAction(open_action)
+
+        open_out_action = QAction(t("menu.file.open_output"), self)
+        open_out_action.triggered.connect(self._open_output_dir)
+        file_menu.addAction(open_out_action)
+
+        file_menu.addSeparator()
+
+        settings_action = QAction(t("menu.file.settings"), self)
         settings_action.triggered.connect(self._open_settings)
-        bar.addAction(settings_action)
+        file_menu.addAction(settings_action)
 
-        # Pousse le bouton "À propos" tout à droite
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        bar.addWidget(spacer)
+        file_menu.addSeparator()
 
-        about_action = QAction("À propos", self)
+        quit_action = QAction(t("menu.file.quit"), self)
+        quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+        quit_action.triggered.connect(self.close)
+        file_menu.addAction(quit_action)
+
+        # Help
+        help_menu = menubar.addMenu(t("menu.help"))
+
+        about_action = QAction(t("menu.help.about"), self)
         about_action.triggered.connect(self._open_about)
-        bar.addAction(about_action)
+        help_menu.addAction(about_action)
+
+        help_menu.addSeparator()
+
+        donate_action = QAction(t("menu.help.donate"), self)
+        donate_action.triggered.connect(self._open_donate_link)
+        help_menu.addAction(donate_action)
+
+    # ----- Actions -----
 
     def _refresh_status(self) -> None:
-        self.statusBar().showMessage(f"Sortie : {get_output_dir()}")
+        self.statusBar().showMessage(t("status.output_dir", path=get_output_dir()))
 
     def _open_settings(self) -> None:
         dlg = SettingsDialog(self)
         if dlg.exec():
             self._refresh_status()
+            if dlg.language_changed:
+                QMessageBox.information(
+                    self,
+                    t("settings.title"),
+                    "Restart the application to apply the new language.\n"
+                    "Redémarre l'application pour appliquer la nouvelle langue.",
+                )
 
     def _open_about(self) -> None:
         AboutDialog(self).exec()
+
+    def _open_donate_link(self) -> None:
+        QDesktopServices.openUrl(QUrl(DONATION_URL))
 
     def _open_output_dir(self) -> None:
         import os
@@ -122,6 +168,21 @@ class MainWindow(QMainWindow):
         path.mkdir(parents=True, exist_ok=True)
         if os.name == "nt":
             os.startfile(str(path))  # type: ignore[attr-defined]
+
+    def _pick_files(self) -> None:
+        paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            t("drop_zone.file_picker_title"),
+            str(Path.home()),
+            t("drop_zone.file_picker_filter"),
+        )
+        if paths:
+            self._enqueue_files([Path(p) for p in paths])
+
+    def _show_startup_donation(self) -> None:
+        StartupDonationDialog(self).exec()
+
+    # ----- Conversion handling -----
 
     def _enqueue_files(self, paths: list[Path]) -> None:
         output_dir = get_output_dir()

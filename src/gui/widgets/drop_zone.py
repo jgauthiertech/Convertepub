@@ -8,6 +8,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QFileDialog, QLabel, QVBoxLayout, QWidget
 
+from src.i18n import t
+
 
 class DropZone(QWidget):
     """Zone centrale qui accepte le drop de fichiers .acsm."""
@@ -21,11 +23,11 @@ class DropZone(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 40, 40, 40)
 
-        self._title = QLabel("Glisse tes fichiers .acsm ici")
+        self._title = QLabel(t("drop_zone.title"))
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._title.setStyleSheet("font-size: 18px; font-weight: 600;")
 
-        self._hint = QLabel("ou clique pour les sélectionner")
+        self._hint = QLabel(t("drop_zone.hint"))
         self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint.setStyleSheet("color: #888; font-size: 13px;")
 
@@ -82,9 +84,9 @@ class DropZone(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             paths, _ = QFileDialog.getOpenFileNames(
                 self,
-                "Choisir des fichiers ACSM",
+                t("drop_zone.file_picker_title"),
                 str(Path.home()),
-                "Fichiers ACSM (*.acsm)",
+                t("drop_zone.file_picker_filter"),
             )
             if paths:
                 self.files_dropped.emit([Path(p) for p in paths])
