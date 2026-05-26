@@ -1,0 +1,28 @@
+[project]
+name = "convertepub"
+version = "0.1.0"
+description = "Convertit les fichiers ACSM Adobe (Fnac, Furet du Nord, etc.) en EPUB sans DRM"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+    { name = "Julien Gauthier", email = "iam@juliengauthier.org" },
+]
+
+[project.urls]
+Homepage = "https://juliengauthier.org"
+Author = "https://juliengauthier.org"
+dependencies = [
+    "PySide6>=6.10",
+    "requests>=2.31",
+    "cryptography>=42.0",
+    "pycryptodome>=3.20",
+    "lxml>=5.1",
+    "rsa>=4.9",
+]
+
+[project.scripts]
+convertepub = "src.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

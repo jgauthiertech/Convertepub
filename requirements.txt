@@ -1,0 +1,7 @@
+PySide6>=6.10
+requests>=2.31
+cryptography>=42.0
+pycryptodome>=3.20
+lxml>=5.1
+rsa>=4.9
+oscrypto>=1.3
