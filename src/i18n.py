@@ -45,6 +45,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "menu.file.quit": "&Quitter",
         "menu.help": "&Aide",
         "menu.help.about": "À &propos",
+        "menu.help.open_logs": "Ouvrir le dossier des &logs",
         "menu.help.donate": "&Soutenir le projet…",
 
         # Drop zone
@@ -133,6 +134,7 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "menu.file.quit": "&Quit",
         "menu.help": "&Help",
         "menu.help.about": "&About",
+        "menu.help.open_logs": "Open &logs folder",
         "menu.help.donate": "&Support the project…",
 
         # Drop zone

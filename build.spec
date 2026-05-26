@@ -7,6 +7,8 @@ Sortie : dist/Convertepub.exe (autonome, Windows)
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_submodules, collect_dynamic_libs
+
 block_cipher = None
 
 # Modules PySide6 qu'on n'utilise PAS — exclusion pour réduire la taille de
@@ -62,6 +64,13 @@ PYSIDE_EXCLUDES = [
 
 # Le moteur ADEPT charge dynamiquement des modules via try/except, PyInstaller
 # peut ne pas tous les détecter. On les force ici.
+#
+# IMPORTANT — oscrypto : sur Windows, oscrypto charge dynamiquement son
+# backend (oscrypto._win, _openssl, etc.) via importlib + ctypes vers les
+# DLLs système (advapi32, crypt32, bcrypt). Sans collect_submodules, certains
+# sous-modules manquent dans le bundle et la signature des requêtes ADEPT
+# devient invalide → Adobe répond E_LIC_LICENSE_SIGN_ERROR. C'est l'une des
+# causes les plus retorses de "token déjà utilisé" qui ne l'est pas vraiment.
 HIDDEN_IMPORTS = [
     "src.core.adept.libadobe",
     "src.core.adept.libadobeAccount",
@@ -81,16 +90,18 @@ HIDDEN_IMPORTS = [
     "Cryptodome.Random",
     "Cryptodome.Util",
     "Cryptodome.Util.asn1",
-    "oscrypto",
-    "oscrypto.keys",
-    "oscrypto.asymmetric",
-    "asn1crypto",
 ]
+HIDDEN_IMPORTS += collect_submodules("oscrypto")
+HIDDEN_IMPORTS += collect_submodules("asn1crypto")
+HIDDEN_IMPORTS += collect_submodules("cryptography")
+
+# DLLs du backend cryptography (libssl/libcrypto bundlés par pyca/cryptography).
+EXTRA_BINARIES = collect_dynamic_libs("cryptography")
 
 a = Analysis(
     ["src/main.py"],
     pathex=[str(Path.cwd())],
-    binaries=[],
+    binaries=EXTRA_BINARIES,
     datas=[],
     hiddenimports=HIDDEN_IMPORTS,
     hookspath=[],

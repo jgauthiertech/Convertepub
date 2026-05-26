@@ -11,9 +11,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from src.config import APP_VERSION
 from src.i18n import t
-
-APP_VERSION = "0.1.0"
 
 
 class AboutDialog(QDialog):

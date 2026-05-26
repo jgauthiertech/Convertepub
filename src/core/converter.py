@@ -153,7 +153,8 @@ def _fulfill_with_rotation(
     acsm_path: Path,
     progress: Callable[[ConversionStep, str], None],
 ) -> str:
-    """Fulfillment avec rotation transparente si l'activation est saturée."""
+    """Fulfillment avec rotation transparente si l'activation est saturée
+    ou si la signature est rejetée (activation cassée)."""
     progress(ConversionStep.ACTIVATING, "")
     slot = activation_mod.get_or_create_current()
 
@@ -164,6 +165,11 @@ def _fulfill_with_rotation(
     if success:
         return reply_data
 
+    log.warning(
+        "Fulfill échoué sur activation %s. Reply Adobe brut :\n%s",
+        slot.slot_id, reply_data,
+    )
+
     # Token déjà consommé : aucune rotation ne peut aider, on échoue net.
     if activation_mod.is_token_consumed_error(reply_data):
         raise TokenAlreadyConsumedError(
@@ -171,9 +177,19 @@ def _fulfill_with_rotation(
             "Réexporte un nouveau .acsm depuis ton espace Fnac/Furet."
         )
 
-    # Erreur côté device (saturation) → rotation + retry une fois.
-    if activation_mod.is_quota_error(reply_data):
-        log.warning("Erreur de quota device, rotation de l'activation : %s", reply_data)
+    # Erreur de quota device OU erreur de signature → rotation + retry une fois.
+    # La signature error peut venir d'une activation corrompue : repartir d'un
+    # slot neuf répare souvent le problème.
+    needs_rotation = (
+        activation_mod.is_quota_error(reply_data)
+        or activation_mod.is_signature_error(reply_data)
+    )
+    if needs_rotation:
+        reason = (
+            "signature rejetée" if activation_mod.is_signature_error(reply_data)
+            else "quota device atteint"
+        )
+        log.warning("Rotation de l'activation (%s)", reason)
         progress(ConversionStep.ACTIVATING, "rotation")
         slot = activation_mod.rotate()
 
@@ -182,10 +198,23 @@ def _fulfill_with_rotation(
         slot.record_use()
         if success:
             return reply_data
+
+        log.warning(
+            "Retry échoué sur nouvelle activation %s. Reply Adobe :\n%s",
+            slot.slot_id, reply_data,
+        )
+
         if activation_mod.is_token_consumed_error(reply_data):
             raise TokenAlreadyConsumedError(
                 "Adobe a renvoyé une erreur de licence après rotation. "
                 "Réexporte un nouveau .acsm depuis ton espace Fnac/Furet."
+            )
+        if activation_mod.is_signature_error(reply_data):
+            raise FulfillmentError(
+                "Adobe a rejeté la signature de la requête deux fois de suite. "
+                "Vérifie que l'horloge système de la machine est à l'heure exacte, "
+                "puis relance. Détails Adobe : "
+                + _humanize_fulfill_error(reply_data)
             )
 
     raise FulfillmentError(_humanize_fulfill_error(reply_data))

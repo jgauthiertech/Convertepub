@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "Convertepub"
+APP_VERSION = "0.1.0"
 
 
 def _local_app_data() -> Path:

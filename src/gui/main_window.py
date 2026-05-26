@@ -133,6 +133,10 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self._open_about)
         help_menu.addAction(about_action)
 
+        open_logs_action = QAction(t("menu.help.open_logs"), self)
+        open_logs_action.triggered.connect(self._open_logs_dir)
+        help_menu.addAction(open_logs_action)
+
         help_menu.addSeparator()
 
         donate_action = QAction(t("menu.help.donate"), self)
@@ -168,6 +172,14 @@ class MainWindow(QMainWindow):
         path.mkdir(parents=True, exist_ok=True)
         if os.name == "nt":
             os.startfile(str(path))  # type: ignore[attr-defined]
+
+    def _open_logs_dir(self) -> None:
+        import os
+        path = config.logs_dir()
+        if os.name == "nt":
+            os.startfile(str(path))  # type: ignore[attr-defined]
+        else:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def _pick_files(self) -> None:
         paths, _ = QFileDialog.getOpenFileNames(
@@ -208,16 +220,8 @@ class MainWindow(QMainWindow):
 
 
 def run_app() -> int:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(config.logs_dir() / "convertepub.log", encoding="utf-8"),
-        ],
-    )
-
+    # Le logging est initialisé en amont par main.init_logging() — ici on
+    # se contente de lancer la GUI.
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName(config.APP_NAME)
 

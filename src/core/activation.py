@@ -210,8 +210,18 @@ QUOTA_ERROR_MARKERS = (
 # Codes d'erreur indiquant que le TOKEN ACSM a déjà été consommé.
 # Aucune rotation ne peut résoudre ça — l'utilisateur doit réexporter un
 # nouvel ACSM depuis son espace Fnac/Furet.
+# Important : E_LIC_LICENSE_SIGN_ERROR n'est PAS un token consommé, c'est
+# une erreur de signature côté serveur — soit l'activation locale est cassée,
+# soit l'horloge système est décalée, soit le backend crypto (oscrypto) a
+# généré une mauvaise signature (ex: PyInstaller mal configuré).
 TOKEN_CONSUMED_MARKERS = (
     "E_LIC_ALREADY_FULFILLED_BY_ANOTHER_USER",
+)
+
+# Codes d'erreur de signature : pas un token consommé, mais un problème
+# local (activation cassée, horloge décalée, backend crypto défaillant).
+# On tente une rotation pour repartir d'une activation propre avant d'abandonner.
+SIGNATURE_ERROR_MARKERS = (
     "E_LIC_LICENSE_SIGN_ERROR",
 )
 
@@ -226,3 +236,9 @@ def is_token_consumed_error(reply_data: str | None) -> bool:
     if not reply_data:
         return False
     return any(marker in reply_data for marker in TOKEN_CONSUMED_MARKERS)
+
+
+def is_signature_error(reply_data: str | None) -> bool:
+    if not reply_data:
+        return False
+    return any(marker in reply_data for marker in SIGNATURE_ERROR_MARKERS)

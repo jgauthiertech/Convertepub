@@ -9,7 +9,6 @@ Avec --setup-only : crée juste une activation Adobe anonyme et quitte
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
@@ -29,16 +28,7 @@ from src.core.converter import (
     TokenExpiredError,
     convert,
 )
-
-
-def _setup_logging(verbose: bool) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
+from src.logging_setup import init_logging
 
 
 def _cli_progress(step: ConversionStep, detail: str) -> None:
@@ -117,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-v", "--verbose", action="store_true", help="Logs détaillés")
     args = parser.parse_args(argv)
 
-    _setup_logging(args.verbose)
+    init_logging(args.verbose)
 
     if args.setup_only:
         return cmd_setup_only()
